@@ -111,48 +111,88 @@ messageInput.addEventListener('blur', () => validateField(messageInput));
     });
 });
 
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.startsWith(name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+const csrftoken = getCookie('csrftoken');
+
 // Form submission
-contactForm.addEventListener('submit', (e) => {
+contactForm.addEventListener('submit', async (e) => {
     e.preventDefault();
 
     // Validate all fields
     const fields = [nameInput, emailInput, subjectInput, messageInput];
     const allValid = fields.every(field => validateField(field));
 
-    if (allValid) {
-        // Simulate form submission
-        const submitButton = contactForm.querySelector('.submit-button');
-        const originalText = submitButton.textContent;
-        
-        submitButton.textContent = 'Sending...';
-        submitButton.disabled = true;
-
-        // Simulate API call
-        setTimeout(() => {
-            // Here you would typically send the form data to your Django backend
-            // Example: fetch('/api/contact/', { method: 'POST', body: formData })
-            
-            formMessage.textContent = 'Message sent successfully! I\'ll get back to you soon.';
-            formMessage.classList.add('success');
-            formMessage.classList.remove('error');
-
-            // Reset form
-            contactForm.reset();
-            
-            // Reset button
-            submitButton.textContent = originalText;
-            submitButton.disabled = false;
-
-            // Clear message after 5 seconds
-            setTimeout(() => {
-                formMessage.classList.remove('success');
-                formMessage.textContent = '';
-            }, 5000);
-        }, 1500);
-    } else {
+    if (!allValid) {
         formMessage.textContent = 'Please fix the errors above';
         formMessage.classList.add('error');
         formMessage.classList.remove('success');
+        return;
+    }
+
+    const submitButton = contactForm.querySelector('.submit-button');
+    const originalText = submitButton.textContent;
+    submitButton.textContent = 'Sending...';
+    submitButton.disabled = true;
+
+    const formData = new FormData(contactForm);
+
+    try {
+        const response = await fetch(contactForm.action, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrftoken,
+            },
+            body: formData,
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.success) {
+            formMessage.textContent = data.message;
+            formMessage.classList.add('success');
+            formMessage.classList.remove('error');
+            contactForm.reset();
+        } else {
+            if (data.errors) {
+                Object.keys(data.errors).forEach((fieldName) => {
+                    const errorEl = document.getElementById(`${fieldName}Error`);
+                    const fieldEl = document.getElementById(fieldName);
+                    if (errorEl && fieldEl) {
+                        errorEl.textContent = data.errors[fieldName];
+                        errorEl.classList.add('show');
+                        fieldEl.style.borderColor = '#f87171';
+                    }
+                });
+            }
+            formMessage.textContent = data.error || 'Unable to send message. Please try again.';
+            formMessage.classList.add('error');
+            formMessage.classList.remove('success');
+        }
+    } catch (error) {
+        formMessage.textContent = 'Network error. Please try again later.';
+        formMessage.classList.add('error');
+        formMessage.classList.remove('success');
+    } finally {
+        submitButton.textContent = originalText;
+        submitButton.disabled = false;
+        setTimeout(() => {
+            formMessage.classList.remove('success', 'error');
+            formMessage.textContent = '';
+        }, 5000);
     }
 });
 
