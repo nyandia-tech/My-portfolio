@@ -5,6 +5,18 @@
 const hamburger = document.getElementById('hamburger');
 const navMenu = document.getElementById('navMenu');
 const navLinks = document.querySelectorAll('.nav-link');
+const cvButton = document.getElementById('cvButton');
+
+// CV Button - Change this URL to your Google Docs sharing link
+const CV_URL = 'https://docs.google.com/document/d/YOUR_CV_LINK_HERE/view';
+
+// Handle CV button click
+if (cvButton) {
+    cvButton.addEventListener('click', (e) => {
+        e.preventDefault();
+        window.open(CV_URL, '_blank');
+    });
+}
 
 // Toggle mobile menu
 hamburger.addEventListener('click', () => {
